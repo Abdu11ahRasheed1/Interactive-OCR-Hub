@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive OCR Hub - KNN & CNN Dashboard</title>
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Space+Grotesk:wght@400;600&display=swap"
+        rel="stylesheet">
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <div class="decor-blob blob-1"></div>
+    <div class="decor-blob blob-2"></div>
+    <div class="decor-blob blob-3"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <i class="fa-solid fa-microchip gradient-text"></i>
+                <h1 class="gradient-text">Interactive OCR Hub</h1>
+            </div>
+            <p class="subtitle animate-fade">OCR Character Recognition System using Scikit-Learn KNN & Keras CNN</p>
+        </header>
+
+        <!-- Main Dashboard grid -->
+        <div class="dashboard-grid">
+            <!-- Left Panel: Actions & Image Area -->
+            <div class="panel glass-panel draw-predict-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-crop-simple"></i> OCR Playground</h2>
+                    <div class="pill-selectors">
+                        <button id="method-knn" class="pill-btn active" onclick="setMethod('knn')">K-NN (Hu
+                            Moments)</button>
+                        <button id="method-cnn" class="pill-btn" onclick="setMethod('cnn')">Keras CNN (32x32)</button>
+                    </div>
+                </div>
+
+                <!-- Dropzone box -->
+                <div class="dropzone" id="ocr-dropzone">
+                    <input type="file" id="ocr-file-input" accept=".bmp,.png,.jpg,.jpeg" style="display:none;">
+                    <div class="dropzone-content" id="dropzone-prompt">
+                        <i class="fa-solid fa-cloud-arrow-up cloud-icon"></i>
+                        <p class="dropzone-title">Drag & Drop Test Image</p>
+                        <p class="dropzone-sub">Supports BMP, PNG, JPG formats (grids of character symbols)</p>
+                        <button class="primary-btn select-file-btn"
+                            onclick="document.getElementById('ocr-file-input').click()">Browse Files</button>
+                    </div>
+
+                    <!-- Interactive Canvas Viewport -->
+                    <div class="canvas-container" id="canvas-container" style="display: none;">
+                        <canvas id="ocr-canvas"></canvas>
+                        <div class="canvas-helper">Hover or click on character bounding boxes to query feature moments
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="playground-controls" style="margin-top: 1.5rem;">
+                    <button class="primary-btn run-ocr-btn" id="run-ocr-btn" style="display:none;"
+                        onclick="triggerPrediction()">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Run OCR Classification
+                    </button>
+                    <button class="secondary-btn clear-btn" id="clear-btn" style="display:none;"
+                        onclick="resetPlayground()">
+                        <i class="fa-solid fa-rotate-left"></i> Reset Playground
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel: prediction readout, Hu moments display -->
+            <div class="panel glass-panel details-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-chart-column"></i> Results & Metrics</h2>
+                </div>
+
+                <div class="results-layout" id="empty-results-state">
+                    <div class="empty-state-message">
+                        <i class="fa-solid fa-magnifying-glass font-fade"></i>
+                        <p>Upload a test image to inspect segmented character blocks, classifications, and structural Hu
+                            Moments vectors.</p>
+                    </div>
+                </div>
+
+                <div class="results-layout" id="active-results-state" style="display: none;">
+                    <div class="predicted-text-card">
+                        <span class="card-label">Recognized Output String</span>
+                        <h3 class="predicted-string" id="pred-output-string">a d h k</h3>
+                    </div>
+
+                    <!-- Tab panels features -->
+                    <div class="segmented-explorer">
+                        <h4>Objects Extracted</h4>
+                        <div class="tiles-wrapper" id="char-tiles-wrapper">
+                            <!-- Character card instances injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Feature descriptors vector visualizer -->
+                    <div class="moments-visualizer" id="moments-box" style="display: none;">
+                        <div class="visualizer-header">
+                            <h4>Hu Moments Vector / Confidence</h4>
+                            <span class="badge" id="selected-char-name">Character 1</span>
+                        </div>
+                        <div class="moments-numeric" id="moments-numeric-values">
+                            <!-- numeric vector elements injected dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Dataset & Model Manager Studio -->
+            <div class="panel glass-panel studio-panel full-width-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-cubes"></i> Model Studio & Training Manager</h2>
+                    <div class="status-indicators">
+                        <span class="status-badge" id="status-knn">KNN Model: <span
+                                class="badge-val">Undetected</span></span>
+                        <span class="status-badge" id="status-cnn">CNN Model: <span
+                                class="badge-val">Undetected</span></span>
+                    </div>
+                </div>
+
+                <div class="studio-split">
+                    <!-- Left: Upload/Segment Training Template -->
+                    <div class="studio-col upload-templates-section">
+                        <h3><i class="fa-solid fa-cloud-arrow-up"></i> Upload Training Template</h3>
+                        <form id="template-upload-form" onsubmit="uploadTemplate(event)">
+                            <div class="input-group">
+                                <label for="template-class-select">Target Class Label</label>
+                                <select id="template-class-select" required>
+                                    <option value="" disabled selected>Select class character</option>
+                                    <!-- Options injected dynamically from status -->
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="template-file">Select Grid Bitmap (e.g. a.bmp)</label>
+                                <div class="file-uploader-box">
+                                    <input type="file" id="template-file" accept=".bmp" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="primary-btn block-btn" id="upload-template-btn">
+                                <i class="fa-solid fa-file-export"></i> Segment & Add to Dataset
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Center: Segmented characters statistics -->
+                    <div class="studio-col dataset-distribution">
+                        <h3><i class="fa-solid fa-database"></i> Training Set Distribution</h3>
+                        <div class="distribution-grid" id="distribution-grid">
+                            <!-- Injected stats dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Trigger training -->
+                    <div class="studio-col train-control-section">
+                        <h3><i class="fa-solid fa-gears"></i> Engine Execution</h3>
+                        <p class="studio-description">Extracts Hu Moments, maps alphabet folders, standardizes scales,
+                            and fits both KNeighborsClassifier and Keras CNN classifiers.</p>
+                        <button class="primary-btn block-btn size-large pulse-glow" id="train-models-btn"
+                            onclick="triggerTraining()">
+                            <i class="fa-solid fa-play"></i> Train Models from Dataset
+                        </button>
+                        <div id="training-spinner" class="spinner-container" style="display:none;">
+                            <div class="spinner"></div>
+                            <span class="spinner-text">Running segmentation & learning fits...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast">Prediction Complete!</div>
+
+    <script src="/js/app.js"></script>
+</body>
+
+</html>
